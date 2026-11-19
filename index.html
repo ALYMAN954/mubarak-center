@@ -5,7 +5,7 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#2f2d66">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@500;600;700&family=Amiri+Quran&display=swap">
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -200,6 +200,18 @@ section[id^=sec-]{scroll-margin-top:12px}
 .hint summary{cursor:pointer;min-height:48px;display:flex;align-items:center;font-weight:600}
 .hint p{margin:0 0 10px;color:var(--muted)}
 .choice.paused{opacity:.6}
+.ayat{margin:36px auto 8px;max-width:640px;text-align:center;display:grid;gap:22px;padding:0 4px}
+.ayat .q,.ayat .h{opacity:1}
+.ayat .q{font-family:'Amiri Quran','Amiri',var(--font-display),serif;font-size:clamp(1.9rem,6vw,2.7rem);line-height:2;color:var(--primary)}
+.ayat .h{font-family:'Amiri',var(--font-body),serif;font-size:clamp(1.15rem,3.6vw,1.45rem);line-height:2;color:var(--ink)}
+.ayat small{display:block;font-family:var(--font-body);font-size:.85rem;color:var(--muted);line-height:1.7;margin-top:2px}
+.ayat hr{border:0;border-top:1px solid var(--line);width:80px;margin:0 auto}
+.ayat.anim .q{animation:ay-flash 2.6s ease-out both}
+.ayat.anim .h{animation:ay-flash 2.6s ease-out 1.9s both}
+.ayat.anim hr{animation:ay-fade 1s ease-out 1.5s both}
+@keyframes ay-flash{0%{opacity:0;text-shadow:0 0 0 transparent}12%{opacity:1;text-shadow:0 0 26px var(--primary)}26%{opacity:.25;text-shadow:0 0 6px var(--primary)}42%{opacity:1;text-shadow:0 0 22px var(--primary)}58%{opacity:.55;text-shadow:0 0 8px var(--primary)}76%{opacity:1;text-shadow:0 0 14px var(--primary)}100%{opacity:1;text-shadow:0 0 0 transparent}}
+@keyframes ay-fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.ayat.anim .q,.ayat.anim .h,.ayat.anim hr{animation:none}}
 .crow{display:grid;gap:6px}.crow .mv{display:flex;gap:6px;justify-content:flex-end}
 textarea[readonly]{background:var(--bg)}
 td.cw{background:var(--bad-bg);color:var(--bad);font-weight:700}
@@ -566,12 +578,20 @@ function setupHTML(){
    <div class="fld"><label for="su-pw2">تأكيد كلمة السر</label><input type="password" id="su-pw2" required></div></div>
    <p class="err" id="err">${esc(ui.err)}</p><button class="btn pri" type="submit">إنشاء الحساب</button></form>`;
 }
-function homeHTML(){
+function homeHTML0(){
   return `<div class="choices">
    <button class="choice big" data-act="enter" data-to="t"><i class="ci">${IC.book}</i><div class="ct"><b>الأساتذة</b><span>تسجيل الحضور والدرجات لدورتك</span></div></button>
    <button class="choice big" data-act="enter" data-to="s"><i class="ci">${IC.shield}</i><div class="ct"><b>المشرف العام</b><span>متابعة جميع الدورات والتقارير والتنبيهات</span></div></button></div>
    ${isStandalone()?'':`<details class="hint"><summary>تثبيت التطبيق على شاشة الجوال</summary><p>أندرويد (Chrome): اضغط ⋮ ثم «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».<br>آيفون (Safari): اضغط زر المشاركة ثم «إضافة إلى الشاشة الرئيسية».</p></details>`}`;
 }
+function ayahHTML(){
+  const first=!window.__ay; if(first) setTimeout(()=>{window.__ay=1},5000);
+  return `<div class="ayat ${first?'anim':''}" aria-label="آية وحديث">
+   <div class="q">﴿وَرَتِّلِ الْقُرْآنَ تَرْتِيلًا﴾<small>سورة المزمل، الآية 4</small></div>
+   <hr>
+   <div class="h">«الْمَاهِرُ بِالْقُرْآنِ مَعَ السَّفَرَةِ الْكِرَامِ الْبَرَرَةِ، وَالَّذِي يَقْرَأُ الْقُرْآنَ وَيَتَتَعْتَعُ فِيهِ، وَهُوَ عَلَيْهِ شَاقٌّ، لَهُ أَجْرَانِ»<small>من حديث عائشة رضي الله عنها · متفق عليه: رواه البخاري (4937) ومسلم (798)</small></div></div>`;
+}
+function homeHTML(){return homeHTML0()+ayahHTML()}
 function loginHTML(kind){
   const list=PUB.names.filter(n=>n.role===(kind==='t'?'teacher':'supervisor'));
   const title=kind==='t'?'الأساتذة':'المشرف العام';
@@ -818,6 +838,7 @@ function overviewHTML(){
    <section class="card"><h2>مقارنة بيانية بين الدورات</h2>${cmpChart(rows)}</section>
    <section class="card"><h2>نقاط القوة والضعف في كل دورة</h2>${rows.length?`<div class="tw"><table><thead><tr><th>الدورة</th>${COMP.map(([k,l])=>`<th>${l}</th>`).join('')}<th>أضعف بند</th></tr></thead><tbody>${rows.map(r=>{const w=COMP.filter(([k])=>r.cp[k]!=null).sort((a,b)=>r.cp[a[0]]-r.cp[b[0]])[0];return `<tr><td>${esc(r.c.name)}</td>${COMP.map(([k])=>cellC(r.cp[k])).join('')}<td>${w?esc(w[1]):'—'}</td></tr>`}).join('')}</tbody></table></div>`:'<p class="info" style="margin:0">لا توجد بيانات بعد.</p>'}
     <div class="toolbar" style="margin-top:12px"><button class="btn" data-act="spdfall">طباعة ورقة القوة والضعف لكل الدورات (PDF)</button></div></section>
+   <section class="card"><h2>قائمة كل الطلاب</h2><p class="info" style="margin:0 0 12px">ملف Excel فيه كل الطلاب من كل الدورات مع الأستاذ وجوال الطالب وجوال ولي الأمر.</p><div class="toolbar"><button class="btn pri" data-act="expall">تصدير قائمة كل الطلاب (Excel)</button></div></section>
    <section class="card"><h2>تقرير نهاية الفصل (PDF)</h2><p class="info" style="margin:0 0 12px">ترتيب الدورات حسب معدل الدرجات، وأعلى الطلاب، والأكثر غياباً، وعدد المستحقين للشهادة في كل دورة.</p><div class="toolbar"><button class="btn pri" data-act="eotpdf">تحميل تقرير نهاية الفصل</button></div></section>
    <section class="card"><h2>تقرير أسبوعي لكل الدورات (PDF)</h2><div class="grid2"><div class="fld"><label for="w-from">من</label><input type="date" id="w-from" data-w="wFrom" value="${sup.wFrom}"></div>
     <div class="fld"><label for="w-to">إلى</label><input type="date" id="w-to" data-w="wTo" value="${sup.wTo}"></div></div><div class="toolbar" style="margin-top:12px"><button class="btn pri" data-act="wpdf">تحميل التقرير</button></div>
@@ -859,6 +880,7 @@ function adminHTML(){
    <p class="err" id="err">${esc(ui.err)}</p></section>
    <section class="card"><h2>استيراد الدورات والأساتذة</h2><p class="info" style="margin:0 0 12px">يضيف الدورات (${CATALOG.length} دورة في ثلاثة أقسام) وينشئ حسابات الأساتذة ويسند إليهم دوراتهم، مع كلمة سر مؤقتة لكل أستاذ تُعرض مرة واحدة. آمن للتكرار: لا يكرر دورة أو أستاذاً موجوداً. يحذف الدورات القديمة الفارغة فقط.</p>
     <div class="toolbar"><button class="btn pri" data-act="import" ${ui.importing?'disabled':''}>${ui.importing?'جاري الاستيراد…':'استيراد الدورات والأساتذة'}</button></div>${importResHTML()}</section>
+   <section class="card"><h2>استيراد طلاب كل الدورات من ملف واحد</h2><p class="info" style="margin:0 0 12px">حمّل القالب، واملأ الأعمدة: الدورة، الاسم، جوال الطالب، جوال ولي الأمر، رقم الإثبات، جهة العمل (عدا الدورة والاسم كلها اختيارية). اسم الدورة يجب أن يطابق اسمها في التطبيق. يظهر لك ملخص قبل الحفظ، وللطالب أن يتكرر في أكثر من دورة.</p>${bulkHTML()}</section>
    <section class="card"><h2>المشرفون</h2><div class="tw"><table><thead><tr><th>المشرف</th><th></th></tr></thead><tbody>${srows}</tbody></table></div>
    <form data-form="addsup" class="inl" style="margin-top:14px"><div class="fld"><label for="sn-name">اسم المشرف</label><input type="text" id="sn-name" required></div>
     <div class="fld"><label for="sn-pass">كلمة السر</label><input type="text" id="sn-pass" required></div><button class="btn pri" type="submit">إضافة مشرف</button></form>
@@ -1091,15 +1113,15 @@ async function pdfMulti(htmls,filename,landscape){
   rep.innerHTML='';
 }
 const targetCid=()=>auth.t?curCid():sup.cid;
-const HDR=[['gphone',/ولي|الأب|الاب|أب/],['phone',/جوال|هاتف|موبايل|اتصال/],['idno',/إثبات|اثبات|هوية|سجل مدني/],['email',/بريد|ايميل|إيميل|email/i],['work',/عمل|وظيفة/],['degree',/درجة|مؤهل/],['name',/^(ال)?اسم|^(ال)?طالب$/]];
-function parseStuRows(rows){
+const HDR=[['course',/دورة|الدورة|حلقة/],['gphone',/ولي|الأب|الاب|أب/],['phone',/جوال|هاتف|موبايل|اتصال/],['idno',/إثبات|اثبات|هوية|سجل مدني/],['email',/بريد|ايميل|إيميل|email/i],['work',/عمل|وظيفة/],['degree',/درجة|مؤهل/],['name',/^(ال)?اسم|^(ال)?طالب$/]];
+function parseStuRows(rows,withCourse){
   rows=rows.map(r=>r.map(x=>String(x==null?'':x).trim())).filter(r=>r.some(Boolean));
   if(!rows.length) return [];
   let map=['name','phone','gphone','idno','work'],start=0;
   const h=rows[0].map(c=>{const f=c&&HDR.find(([k,re])=>re.test(c));return f?f[0]:null});
   if(h.includes('name')&&rows[0].every((c,i)=>!c||h[i])){map=h;start=1}
-  const out=[];
-  rows.slice(start).forEach(r=>{const o={};map.forEach((k,i)=>{if(k&&r[i]&&!o[k]) o[k]=r[i]});if(o.name) out.push(o)});
+  const out=[];out.hasHeader=start===1;out.hasCourse=map.includes('course');
+  rows.slice(start).forEach(r=>{const o={};map.forEach((k,i)=>{if(k&&r[i]&&!o[k]&&(k!=='course'||withCourse)) o[k]=r[i]});if(o.name) out.push(o)});
   return out;
 }
 function impStuHTML(){
@@ -1171,6 +1193,49 @@ async function closeTerm(){
   }
   await loadAll();ui.archives=null;render();
   flashSaved(fail?'أُرشف الفصل لكن تعذر حذف بعض البيانات':'أُرشف الفصل وبدأت صفحة جديدة');
+}
+
+const cKey=x=>normAr(x).replace(/[\s()（）\-_.،,]+/g,'');
+function exportAllStudents(){
+  if(typeof XLSX==='undefined'){flashSaved('تعذر تحميل مكتبة Excel');return}
+  const a=[['القسم','المجموعة','الدورة','الأستاذ','الاسم','جوال الطالب','جوال ولي الأمر','رقم الإثبات','جهة العمل','الدرجة العلمية','البريد الإلكتروني','الحالة']];
+  circles().forEach(c=>{const tn=teacherOf(c.id).map(t=>t.name).join('، ');studentsOf(c.id,true).forEach(s=>a.push([SECS[c.sec],c.grp,c.name,tn,s.name,s.phone||'',s.gphone||'',s.idno||'',s.work||'',s.degree||'',s.email||'',s.active===false?'موقوف':'فعّال']))});
+  if(a.length===1){flashSaved('لا يوجد طلاب للتصدير');return}
+  const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(a);ws['!cols']=[14,16,22,20,24,14,16,14,18,14,22,8].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws,'كل الطلاب');wb.Workbook={Views:[{RTL:true}]};
+  dlSave('قائمة-كل-الطلاب-'+iso(new Date())+'.xlsx',XLSX.write(wb,{type:'array',bookType:'xlsx'}));
+}
+function downloadTemplate(){
+  if(typeof XLSX==='undefined'){flashSaved('تعذر تحميل مكتبة Excel');return}
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['الدورة','الاسم','جوال الطالب','جوال ولي الأمر','رقم الإثبات','جهة العمل']]),'الطلاب');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['أسماء الدورات (انسخ الاسم كما هو)']].concat(circles().map(c=>[c.name]))),'الدورات');
+  wb.Workbook={Views:[{RTL:true}]};
+  dlSave('قالب-استيراد-الطلاب.xlsx',XLSX.write(wb,{type:'array',bookType:'xlsx'}));
+}
+function bulkPlan(rows){
+  const list=parseStuRows(rows,true);
+  if(!list.hasHeader||!list.hasCourse) return {error:'لم أجد صف العناوين. يجب أن يحتوي الملف على عمودي «الدورة» و«الاسم» في الصف الأول (استخدم القالب).'};
+  const byKey=new Map(circles().map(c=>[cKey(c.name),c])),per=new Map(),unknown=[],seen=new Map();
+  list.forEach((o,i)=>{
+    const c=byKey.get(cKey(o.course||''));
+    if(!c){unknown.push({n:i+2,name:o.name,course:o.course||'(فارغ)'});return}
+    let p=per.get(c.id);if(!p){p={c,add:[],dup:0};per.set(c.id,p)}
+    let set=seen.get(c.id);if(!set){set=new Set(studentsOf(c.id,true).map(x=>normAr(x.name)));seen.set(c.id,set)}
+    const k=normAr(o.name);if(set.has(k)){p.dup++;return}set.add(k);p.add.push(o);
+  });
+  return {per:[...per.values()],unknown,total:list.length};
+}
+function bulkHTML(){
+  const b=ui.bulk;
+  const head=`<div class="toolbar"><button class="btn" data-act="tpl">تحميل قالب Excel</button><label class="btn" for="bk-f" style="display:inline-flex;align-items:center">اختيار ملف الطلاب</label><input type="file" id="bk-f" accept=".xlsx,.xls,.csv" data-bulkfile="1" hidden></div>`;
+  if(!b) return head;
+  if(b.error) return head+`<div class="note" style="margin-top:12px">${esc(b.error)}</div>`;
+  const add=b.per.reduce((n,p)=>n+p.add.length,0);
+  return head+`<div class="note" style="margin-top:12px"><b>معاينة قبل الحفظ</b> (${esc(b.file)}): ${b.total} صفاً · سيُضاف <b>${add}</b> طالباً${b.per.some(p=>p.dup)?' · تُتخطّى الأسماء المكررة داخل الدورة':''}${b.unknown.length?` · <b>${b.unknown.length}</b> صفاً دورته غير معروفة ولن يُستورد`:''}.</div>
+   ${b.per.length?`<div class="tw" style="margin-top:10px"><table><thead><tr><th>الدورة</th><th>سيُضاف</th><th>مكرر (يُتخطى)</th></tr></thead><tbody>${b.per.map(p=>`<tr><td>${esc(p.c.name)}</td><td>${p.add.length}</td><td>${p.dup}</td></tr>`).join('')}</tbody></table></div>`:''}
+   ${b.unknown.length?`<div class="tw" style="margin-top:10px"><table><thead><tr><th>الصف</th><th>الاسم</th><th>الدورة المكتوبة (غير مطابقة)</th></tr></thead><tbody>${b.unknown.slice(0,50).map(u=>`<tr><td>${u.n}</td><td>${esc(u.name)}</td><td>${esc(u.course)}</td></tr>`).join('')}</tbody></table></div>${b.unknown.length>50?'<p class="info">…والبقية غير معروضة.</p>':''}`:''}
+   <div class="toolbar" style="margin-top:12px">${add?'<button class="btn pri" data-act="bulkok">تأكيد الاستيراد</button>':''}<button class="btn" data-act="bulkcancel">إلغاء</button></div>`;
 }
 
 /* ---------- events ---------- */
@@ -1270,6 +1335,12 @@ document.addEventListener('click',async e=>{
   else if(act==='tdel'){const {error}=await SB.rpc('admin_delete_user',{uid:b.dataset.id});if(error)flashSaved('تعذر الحذف');await refreshAdmin()}
   else if(act==='treset'){ui.resetId=ui.resetId===b.dataset.id?null:b.dataset.id;render()}
   else if(act==='supdel'){const {error}=await SB.rpc('admin_delete_user',{uid:b.dataset.id});if(error)flashSaved('تعذر الحذف');await refreshAdmin()}
+  else if(act==='expall') exportAllStudents();
+  else if(act==='tpl') downloadTemplate();
+  else if(act==='bulkcancel'){ui.bulk=null;render()}
+  else if(act==='bulkok'){const b=ui.bulk;if(b&&b.per){let n=0;b.per.forEach(p=>p.add.forEach(o=>{const id=uid('s'),v=Object.assign({},o);delete v.course;
+      put('students',id,Object.assign({id,circleId:p.c.id,active:true,token:newToken(),idno:'',email:'',phone:'',gphone:'',work:'',degree:''},v));n++}));
+    ui.bulk=null;render();flashSaved('أُضيف '+n+' طالباً')}}
   else if(act==='imptoggle'){ui.impStu=!ui.impStu;render()}
   else if(act==='selall'){ui.sel={cid:sup.cid,ids:{}};studentsOf(sup.cid).forEach(x=>ui.sel.ids[x.id]=1);render()}
   else if(act==='certall'){const hs=statsOf(sup.cid).filter(o=>o.attPct!=null&&o.attPct>=settings().passAtt).map(o=>certHTML(o.s.id)).filter(Boolean);
@@ -1307,7 +1378,13 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',async e=>{
   const el=e.target;
-  if(el.dataset.pick){if(!ui.sel||ui.sel.cid!==sup.cid) ui.sel={cid:sup.cid,ids:{}};if(el.checked) ui.sel.ids[el.dataset.pick]=1;else delete ui.sel.ids[el.dataset.pick]}
+  if(el.dataset.bulkfile!==undefined){const f=el.files&&el.files[0];if(!f)return;
+    if(typeof XLSX==='undefined'){flashSaved('تعذر تحميل مكتبة Excel');return}
+    try{const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+      const pl=bulkPlan(rows);ui.bulk=Object.assign({file:f.name},pl)}catch(x){ui.bulk={error:'تعذرت قراءة الملف.'}}
+    el.value='';render()}
+  else if(el.dataset.pick){if(!ui.sel||ui.sel.cid!==sup.cid) ui.sel={cid:sup.cid,ids:{}};if(el.checked) ui.sel.ids[el.dataset.pick]=1;else delete ui.sel.ids[el.dataset.pick]}
   else if(el.dataset.bulkmv!==undefined){const ids=(ui.sel&&ui.sel.cid===sup.cid)?Object.keys(ui.sel.ids):[],dest=el.value;
     if(!dest){return}
     if(!ids.length){flashSaved('حدّد الطلاب أولاً');render();return}
