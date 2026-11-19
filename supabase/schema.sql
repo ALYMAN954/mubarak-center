@@ -3,13 +3,14 @@
 
 create extension if not exists pgcrypto;
 
--- الحسابات: كل معلم أو مشرف له حساب دخول (Supabase Auth) وملف تعريف هنا
+-- الحسابات: كل أستاذ أو مشرف له حساب دخول (Supabase Auth) وملف تعريف هنا
 create table if not exists public.profiles (
   id          uuid primary key references auth.users(id) on delete cascade,
   login_key   text unique not null,
   role        text not null check (role in ('supervisor','teacher')),
   name        text not null,
   circle_id   text,
+  circle_ids  text[] not null default '{}',
   must_change boolean not null default false,
   created_at  timestamptz not null default now()
 );
@@ -29,10 +30,15 @@ create index if not exists docs_updated_idx on public.docs (coll, updated_at des
 alter table public.profiles enable row level security;
 alter table public.docs enable row level security;
 
--- دوال مساعدة تقرأ دور المستخدم وحلقته (بصلاحية النظام لتجنب التكرار الذاتي)
+-- دوال مساعدة تقرأ دور المستخدم ودورته (بصلاحية النظام لتجنب التكرار الذاتي)
 create or replace function public.my_role() returns text
   language sql stable security definer set search_path = public as
 $$ select role from public.profiles where id = auth.uid() $$;
+
+create or replace function public.my_circles() returns text[]
+  language sql stable security definer set search_path = public as
+$$ select coalesce(nullif(circle_ids,'{}'), case when circle_id is null then '{}'::text[] else array[circle_id] end)
+   from public.profiles where id = auth.uid() $$;
 
 create or replace function public.my_circle() returns text
   language sql stable security definer set search_path = public as
@@ -53,16 +59,16 @@ drop policy if exists docs_teacher_update on public.docs;
 -- المشرف: كل شيء
 create policy docs_sup_all on public.docs for all
   using (public.my_role() = 'supervisor') with check (public.my_role() = 'supervisor');
--- المعلم: يقرأ الإعدادات، ويقرأ ويكتب بيانات حلقته فقط
+-- الأستاذ: يقرأ الإعدادات، ويقرأ ويكتب بيانات دوراته فقط
 create policy docs_teacher_select on public.docs for select
   using (public.my_role() = 'teacher' and
-         (coll = 'cfg' or (coll in ('students','records','audit') and circle_id = public.my_circle())));
+         (coll = 'cfg' or (coll in ('students','records','audit') and circle_id = any(public.my_circles()))));
 create policy docs_teacher_insert on public.docs for insert
   with check (public.my_role() = 'teacher' and coll in ('students','records','audit')
-              and circle_id = public.my_circle());
+              and circle_id = any(public.my_circles()));
 create policy docs_teacher_update on public.docs for update
-  using (public.my_role() = 'teacher' and coll in ('students','records') and circle_id = public.my_circle())
-  with check (public.my_role() = 'teacher' and coll in ('students','records') and circle_id = public.my_circle());
+  using (public.my_role() = 'teacher' and coll in ('students','records') and circle_id = any(public.my_circles()))
+  with check (public.my_role() = 'teacher' and coll in ('students','records') and circle_id = any(public.my_circles()));
 
 -- ===== دوال تُستدعى من التطبيق =====
 -- قبل الدخول: أسماء الحسابات فقط (لقائمة الاختيار) وهل النظام يحتاج إعداداً أولياً
@@ -89,7 +95,7 @@ begin
   insert into public.profiles (id, login_key, role, name) values (auth.uid(), p_key, 'supervisor', p_name);
 end $$;
 
--- المعلم يختار حلقته أول مرة فقط
+-- الأستاذ يختار دورته أول مرة فقط
 create or replace function public.set_my_circle(cid text) returns void
   language plpgsql security definer set search_path = public as
 $$
@@ -102,7 +108,7 @@ create or replace function public.clear_must_change() returns void
   language sql security definer set search_path = public as
 $$ update public.profiles set must_change = false where id = auth.uid() $$;
 
--- المشرف يعيد تعيين كلمة سر حساب (يصبح مؤقتاً ويُطلب من المعلم تغييره)
+-- المشرف يعيد تعيين كلمة سر حساب (يصبح مؤقتاً ويُطلب من الأستاذ تغييره)
 create or replace function public.admin_set_password(uid uuid, pw text) returns void
   language plpgsql security definer set search_path = public, auth, extensions as
 $$
@@ -123,7 +129,7 @@ begin
   delete from auth.users where id = uid;
 end $$;
 
--- رابط الطالب: يعيد بيانات الطالب الواحد فقط دون ملاحظات المعلم ودون بيانات غيره
+-- رابط الطالب: يعيد بيانات الطالب الواحد فقط دون ملاحظات الأستاذ ودون بيانات غيره
 create or replace function public.student_view(tok text) returns jsonb
   language plpgsql stable security definer set search_path = public as
 $$
@@ -155,6 +161,8 @@ grant execute on function public.admin_set_password(uuid, text) to authenticated
 grant execute on function public.admin_delete_user(uuid) to authenticated;
 grant execute on function public.claim_first_supervisor(text, text) to authenticated;
 grant execute on function public.set_my_circle(text) to authenticated;
+revoke all on function public.my_circles() from public, anon;
+grant execute on function public.my_circles() to authenticated;
 grant execute on function public.clear_must_change() to authenticated;
 grant execute on function public.login_names() to anon, authenticated;
 grant execute on function public.needs_setup() to anon, authenticated;
